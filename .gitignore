@@ -1,0 +1,35 @@
+# Node / фронтенд
+node_modules/
+web/dist/
+web/.vite/
+*.tsbuildinfo
+
+# Демо-ассеты генерируются скриптом: cd web && npm run tiles
+web/mock/tiles/
+web/mock/preview.png
+
+# Java / Maven
+plugin/target/
+*.class
+
+# Данные плагина (никогда не коммитить)
+plugins/
+*.db
+*.db-wal
+*.db-shm
+secrets.yml
+
+# Окружение
+.env
+.env.local
+.env.*.local
+
+# Cloudflare / wrangler
+.wrangler/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

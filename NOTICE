@@ -1,0 +1,28 @@
+Hypemap
+Copyright (c) 2026 Hypemap contributors
+Licensed under the MIT License (see LICENSE).
+
+Сторонние проекты, идеи и фрагменты которых использованы:
+
+1. Dynmap — https://github.com/webbukkit/dynmap
+   Лицензия: Apache License 2.0.
+   Использовано: формат URL тайлов, формулы проекции из `worldtomap`/`maptoworld`,
+   структура `/up/configuration` и `/up/world/<world>/<ts>`, имена перспектив
+   (`iso_N_90_*`), Marker API (`createAreaMarker`, `setCornerLocations`,
+   `setFillStyle`, `setLineStyle`).
+   Код Dynmap не копировался в этот репозиторий; математика проекции
+   переписана на TypeScript в `web/src/map/dynmapMath.ts`.
+
+2. LiveAtlas — https://github.com/JLyne/LiveAtlas
+   Лицензия: Apache License 2.0.
+   Использовано: идея SPA-клиента к Dynmap и подход к слою тайлов.
+   Код не копировался.
+
+3. Leaflet — https://leafletjs.com (BSD-2-Clause)
+   Vue, Pinia, Vite, lucide — MIT.
+
+4. Paper API — https://papermc.io (GPL-3.0, используется как provided dependency).
+   sqlite-jdbc — Apache 2.0. Gson — Apache 2.0.
+
+Демонстрационные тайлы в `web/mock/tiles` сгенерированы скриптом
+`scripts/gen-demo-tiles.ts` процедурно и не содержат ассетов Minecraft.

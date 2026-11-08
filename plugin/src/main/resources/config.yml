@@ -1,0 +1,86 @@
+# ============================================================================
+#  Hypemap — карта поселений поверх Dynmap
+#  Документация: docs/DEPLOY.md
+# ============================================================================
+
+storage:
+  # Файл базы (SQLite) внутри plugins/Hypemap/
+  file: hypemap.db
+
+api:
+  enabled: true
+  # ВАЖНО: сервер слушает только localhost, наружу отдаём через Cloudflare Tunnel.
+  # Если туннель запущен на другой машине — укажите её IP или 0.0.0.0 (осознанно).
+  bind: 127.0.0.1
+  port: 8800
+  # Публичный адрес API (нужен для CORS и корректных ссылок). Заполните после настройки Tunnel.
+  public-url: 'https://map.example.com'
+  # Разрешённые Origin'ы для dev-режима и прямых запросов (можно несколько).
+  allowed-origins:
+    - 'https://map.example.com'
+    - 'http://localhost:5173'
+  # Проксировать ли настоящий IP клиента из заголовков Cloudflare
+  trust-forwarded-for: true
+  max-body-bytes: 262144
+  # Сколько потоков обслуживают REST API
+  threads: 4
+
+auth:
+  # LOCAL  — логин/пароль в плагине (JWT), Cloudflare Access не обязателен
+  # ACCESS — доверяем только Cf-Access-Jwt-Assertion от Cloudflare Access
+  # HYBRID — принимаем и локальный JWT, и Access-JWT
+  mode: LOCAL
+  # Секрет подписи JWT. Пусто => сгенерируется автоматически при старте.
+  jwt-secret: ''
+  token-ttl-minutes: 720
+  # PBKDF2-HMAC-SHA256, 210000 итераций по умолчанию
+  password-iterations: 210000
+  rate-limit:
+    attempts: 8
+    window-seconds: 300
+  access:
+    # example.cloudflareaccess.com
+    team-domain: ''
+    # Application Audience (AUD) Tag из Cloudflare Access
+    audience: ''
+    # Кому выдавать роль ADMIN при входе через Access
+    admin-emails: []
+    # Роль для остальных пользователей Access
+    default-role: EDITOR
+    jwks-cache-minutes: 60
+
+towns:
+  max-polygon-points: 256
+  max-members: 64
+  min-name-length: 2
+  max-name-length: 40
+  default-fill-opacity: 0.28
+  default-line-opacity: 1.0
+  default-line-weight: 2
+  # Разрешённые флаги поселения (показываются кнопками в админке)
+  flags:
+    - PVP
+    - PEACEFUL
+    - PUBLIC
+    - CAPITAL
+    - SHOP
+    - FARM
+    - MINING
+    - PORT
+
+dynmap:
+  enabled: true
+  marker-set-id: hypemap.towns
+  marker-set-label: 'Поселения'
+  marker-set-hidden: false
+  min-zoom: 0
+  max-zoom: 10
+  # Удалять маркеры, которых больше нет в базе Hypemap
+  delete-orphan-markers: true
+
+# Подсказки для фронтенда (GET /api/meta)
+web:
+  site-title: 'Hypemap'
+  server-name: 'Minecraft Server'
+  dynmap-url: 'https://map.example.com'
+  discord-invite: ''

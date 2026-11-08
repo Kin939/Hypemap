@@ -1,0 +1,20 @@
+name: Hypemap
+version: '${project.version}'
+main: net.hypemap.HypemapPlugin
+api-version: '1.21'
+description: Modern town / area layer and REST API for Dynmap
+authors: [Hypemap]
+website: https://github.com/Kin939/Hypemap
+softdepend: [dynmap]
+
+commands:
+  hypemap:
+    description: Hypemap admin command
+    usage: /hypemap help
+    aliases: [hm]
+    permission: hypemap.admin
+
+permissions:
+  hypemap.admin:
+    description: Full access to Hypemap administration
+    default: op
