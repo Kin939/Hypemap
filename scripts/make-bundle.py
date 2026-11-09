@@ -90,6 +90,9 @@ def iter_files(base: pathlib.Path):
             continue
         if path.suffix in EXCLUDE_SUFFIXES or path.name in EXCLUDE_NAMES:
             continue
+        # сгенерированные превью (в репозитории есть docs/preview.png)
+        if relative.as_posix() == "web/mock/preview.png":
+            continue
         yield path, relative
 
 
