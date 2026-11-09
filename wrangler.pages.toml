@@ -1,0 +1,15 @@
+# ============================================================================
+#  Альтернатива: Cloudflare Pages (Pages Functions из каталога functions/)
+#  Деплой:  npx wrangler pages deploy web/dist --project-name hypemap \
+#             --config wrangler.pages.toml
+#  В дашборде Pages достаточно полей:
+#    Build command:         cd web && npm ci && npm run build
+#    Build output directory: web/dist
+#    Root directory:        /
+# ============================================================================
+name = "hypemap"
+pages_build_output_dir = "web/dist"
+
+[vars]
+HYPEMAP_ORIGIN = "https://mc.example.com"
+TILES_CACHE_TTL = "604800"

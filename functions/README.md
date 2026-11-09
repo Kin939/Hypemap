@@ -1,7 +1,11 @@
-# Cloudflare Pages Functions
+# Cloudflare Pages Functions / Worker
 
 Единственная задача — сделать Minecraft-сервер доступным с того же origin, что и сайт,
-без открытых портов и без CORS.
+без открытых портов и без CORS. Логика общая для двух режимов:
+
+- **Workers + Static Assets** (`npx wrangler deploy`) → точка входа `worker/index.ts`,
+  этот каталог подключается как библиотека;
+- **Pages** (`functions/` + `wrangler.pages.toml`) → работают файловые маршруты ниже.
 
 | Файл | Маршрут | Поведение |
 | --- | --- | --- |
@@ -21,9 +25,11 @@
 | `ACCESS_CLIENT_ID` | secret | Service Token Cloudflare Access (если туннель закрыт) |
 | `ACCESS_CLIENT_SECRET` | secret | Service Token secret |
 
-`wrangler.toml` в корне репозитория задаёт `pages_build_output_dir = "web/dist"`,
-поэтому функции деплоятся вместе со статикой одной командой:
+Сборка фронтенда обязательна для обоих режимов:
 
 ```bash
-npx wrangler pages deploy web/dist --project-name hypemap
+cd web && npm ci && npm run build && cd ..
+
+npx wrangler deploy                                        # Workers (wrangler.toml)
+npx wrangler pages deploy web/dist --config wrangler.pages.toml --project-name hypemap  # Pages
 ```

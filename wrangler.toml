@@ -1,15 +1,25 @@
-# Cloudflare Pages project (Git integration или `wrangler pages deploy web/dist`)
+# ============================================================================
+#  Cloudflare Workers + Static Assets (режим по умолчанию)
+#  Деплой:  npx wrangler deploy
+#  Ожидает собранный фронтенд:  cd web && npm ci && npm run build
+# ============================================================================
 name = "hypemap"
+main = "worker/index.ts"
 compatibility_date = "2025-12-01"
-pages_build_output_dir = "web/dist"
+
+# Статика из web/dist + SPA-фолбэк (/admin, /towns отдают index.html)
+[assets]
+directory = "./web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
 
 [vars]
 # Публичный хостнейм туннеля, за которым живёт Minecraft-сервер.
-# Меняется в dashboard (Settings → Environment variables) или здесь.
+# Можно переопределить в Dashboard → Settings → Variables and Secrets.
 HYPEMAP_ORIGIN = "https://mc.example.com"
 # Кеш тайлов на edge, секунды (7 дней)
 TILES_CACHE_TTL = "604800"
 
 # Секреты (не храните в репозитории!):
-#   wrangler pages secret put ACCESS_CLIENT_ID --project-name hypemap
-#   wrangler pages secret put ACCESS_CLIENT_SECRET --project-name hypemap
+#   npx wrangler secret put ACCESS_CLIENT_ID
+#   npx wrangler secret put ACCESS_CLIENT_SECRET

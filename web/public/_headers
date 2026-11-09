@@ -1,4 +1,15 @@
-# Заголовки для статики Cloudflare Pages (кладётся в dist при сборке)
+# Заголовки статики. Кладётся в dist при сборке (vite копирует web/public).
+# Работает и в Cloudflare Pages, и в Workers Static Assets — поэтому CSP
+# применяется к HTML даже когда статику отдаёт edge без запуска воркера.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+
+# Хешированные бандлы Vite неизменяемы
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 

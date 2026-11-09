@@ -219,41 +219,67 @@ VITE_DYNMAP_BASE=
 VITE_SITE_TITLE=Hypemap
 ```
 
-## 5. Cloudflare Pages
+## 5. Cloudflare: Workers + Static Assets (по умолчанию) или Pages
 
-### 5.1 Деплой из CLI (быстрее всего)
+В репозитории два конфига — под оба типа проектов:
 
-```bash
-# из корня репозитория (там, где лежат functions/ и wrangler.toml)
-npx wrangler login
-npx wrangler pages project create hypemap --production-branch main
-npx wrangler pages deploy web/dist --project-name hypemap
-```
+| Файл | Тип проекта | Команда деплоя |
+| --- | --- | --- |
+| `wrangler.toml` | **Workers + Static Assets** (так сейчас предлагает дашборд) | `npx wrangler deploy` |
+| `wrangler.pages.toml` | Pages (Pages Functions из `functions/`) | `npx wrangler pages deploy web/dist --config wrangler.pages.toml --project-name hypemap` |
 
-Wrangler сам подхватит `functions/` (Pages Functions) и `wrangler.toml`.
-В `wrangler.toml` поменяйте `HYPEMAP_ORIGIN` на свой хостнейм туннеля:
+Логика прокси в обоих режимах одна (`functions/_lib/proxy.ts`): `worker/index.ts` —
+точка входа для Workers, `functions/*/[[path]].ts` — для Pages.
 
-```toml
-[vars]
-HYPEMAP_ORIGIN = "https://mc.example.com"
-TILES_CACHE_TTL = "604800"
-```
+### 5.1 Workers (то, что вы сейчас настраиваете)
 
-Либо в dashboard: **Pages → hypemap → Settings → Environment variables**.
+`wrangler.toml` уже содержит `main`, `[assets]` и переменные. **Обязательно нужен шаг сборки**,
+иначе `wrangler deploy` падает с ошибкой
+`Could not detect a directory containing static files` — каталога `web/dist` просто нет.
 
-### 5.2 Деплой из Git (автосборка на каждый push)
-
-**Pages → Create application → Connect to Git**:
+В дашборде **Workers & Pages → ваш проект → Settings → Build**:
 
 | Поле | Значение |
 | --- | --- |
-| Framework preset | `None` |
+| Build command | `cd web && npm ci && npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | `/` (корень репозитория) |
+| `NODE_VERSION` (переменная) | `20` или выше |
+
+В **Settings → Variables and Secrets** добавьте:
+
+```
+HYPEMAP_ORIGIN   = https://mc.example.com     # хостнейм Cloudflare Tunnel
+TILES_CACHE_TTL  = 604800
+```
+
+Вручную с машины:
+
+```bash
+cd web && npm ci && npm run build && cd ..
+npx wrangler login
+npx wrangler deploy            # читает wrangler.toml
+```
+
+Что получается: статику отдаёт edge-слой Static Assets (без запуска воркера, SPA-фолбэк
+для `/admin`, `/towns` включён), а `/api/*`, `/up/*`, `/tiles/*` проксирует воркер.
+
+### 5.2 Pages (альтернатива)
+
+Дашборд: **Workers & Pages → Create → Pages → Connect to Git**:
+
+| Поле | Значение |
+| --- | --- |
 | Build command | `cd web && npm ci && npm run build` |
 | Build output directory | `web/dist` |
-| Root directory | `/` (корень репозитория — нужен `functions/`) |
-| Node version | `20` (переменная `NODE_VERSION`) |
+| Root directory | `/` (нужен каталог `functions/`) |
 
-### 5.3 Что делают Functions
+CLI: `npx wrangler pages deploy web/dist --config wrangler.pages.toml --project-name hypemap`.
+
+> В Pages-проекте не должно быть `main`/`[assets]` в конфиге — поэтому для Pages
+> используется отдельный `wrangler.pages.toml`.
+
+### 5.3 Что делают прокси-маршруты (одинаково в обоих режимах)
 
 | Путь | Куда | Кеш |
 | --- | --- | --- |
@@ -262,11 +288,11 @@ TILES_CACHE_TTL = "604800"
 | `/up/world/*` | `HYPEMAP_ORIGIN/up/world/*` | нет (живые игроки) |
 | `/tiles/*` | `HYPEMAP_ORIGIN/tiles/*` | 7 дней на edge + браузер, при недоступности origin — прозрачный пиксель |
 
-Логи: `npx wrangler pages deployment tail --project-name hypemap`.
+Логи: `npx wrangler pages deployment tail` (Pages) или `npx wrangler tail` (Workers).
 
-> Тариф Free: 100 000 запросов/сутки на Functions. Кеш тайлов на edge сильно экономит
-> и запросы, и трафик, но *каждый уникальный* тайл — это один запрос. Для очень больших
-> миров имеет смысл вынести тайлы в R2 + кеширующий Worker (см. раздел «Масштабирование»).
+> Лимиты Free-тарифа: у Workers — 100 000 запросов/сутки, у Pages — 100 000 запросов Functions.
+> Кеш тайлов на edge экономит и запросы, и трафик, но каждый уникальный тайл — это запрос.
+> Для очень больших миров тайлы стоит вынести в R2 (см. «Масштабирование»).
 
 ## 6. Cloudflare Access (опционально, но рекомендуется)
 
@@ -348,6 +374,9 @@ npx wrangler pages deploy web/dist --project-name hypemap
 | --- | --- | --- |
 | `502 upstream_unreachable` | cloudflared не запущен или неверный порт | `systemctl status cloudflared`, `cloudflared tunnel info hypemap` |
 | `/api/*` отдаёт HTML Dynmap | правило `path` в ingress не сработало | переставьте правила, `^/api(/.*)?$` должно быть первым |
+| `Could not detect a directory containing static files` при `wrangler deploy` | не выполнен шаг сборки: нет `web/dist` | Build command = `cd web && npm ci && npm run build`, deploy = `npx wrangler deploy` |
+| `Configuration file for Pages projects does not support 'main'` | Pages-проект читает `wrangler.toml` от Workers | деплойте Pages с `--config wrangler.pages.toml` |
+| Сайт открылся, `/api/health` → 502 `upstream_unreachable` | не задан `HYPEMAP_ORIGIN` или туннель не поднят | Variables в дашборде + `systemctl status cloudflared` |
 | Карта серая | нет тайлов | `fullrender`, проверьте `prefix` в worlds.txt |
 | `401` при сохранении | истёк JWT (12 ч) | войдите заново; проверьте часы на сервере |
 | `403` на удаление | роль EDITOR | `/hypemap role <логин> ADMIN` |

@@ -4,9 +4,16 @@
  * достаточно, чтобы код был читаемым и типизированным.
  */
 
+/** Биндинг Static Assets (режим Workers). */
+export interface AssetsFetcher {
+  fetch(request: Request): Promise<Response>
+}
+
 export interface Env {
   /** Публичный адрес туннеля с Minecraft-сервером (без слэша на конце). */
   HYPEMAP_ORIGIN?: string
+  /** Статика web/dist — только в режиме Workers (`[assets]` в wrangler.toml). */
+  ASSETS?: AssetsFetcher
   /** Service Token для Cloudflare Access (если туннель закрыт Access'ом). */
   ACCESS_CLIENT_ID?: string
   ACCESS_CLIENT_SECRET?: string

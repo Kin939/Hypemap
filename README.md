@@ -88,13 +88,17 @@ web/                       Vue 3 + TypeScript + Vite + Leaflet
   src/views/               MapPage, TownsPage, AdminPage, AdminEditorPage, NotFoundPage
   mock/                    мок API + Dynmap, сгенерированные демо-тайлы
 
-functions/                 Cloudflare Pages Functions: прокси /api/*, /up/*, /tiles/*
+worker/index.ts            Cloudflare Workers + Static Assets (дефолтный деплой)
+functions/                 Cloudflare Pages Functions (альтернативный деплой)
   _lib/proxy.ts            единая логика проксирования + Cache API + Service Token
-  _middleware.ts           CSP и заголовки безопасности
+  _lib/security.ts         CSP и заголовки безопасности (общие для обоих режимов)
+  _middleware.ts           подключение заголовков в Pages
 
 scripts/gen-demo-tiles.ts  генератор демо-тайлов/аватарок (без внешних ассетов)
+scripts/make-bundle.py     сборка zip-архива проекта (используется в CI-релизе)
 docs/                      ARCHITECTURE.md, API.md, DEPLOY.md, DYNMAP.md
-wrangler.toml              конфигурация Pages-проекта
+wrangler.toml              Workers + Static Assets (npx wrangler deploy)
+wrangler.pages.toml        альтернатива: Cloudflare Pages
 ```
 
 ## Деплой
@@ -106,10 +110,17 @@ wrangler.toml              конфигурация Pages-проекта
 # 1. плагин
 cd plugin && mvn -B clean package        # → target/Hypemap-1.0.0.jar
 
-# 2. фронтенд + Pages
-cd web && npm ci && npm run build
-npx wrangler pages deploy web/dist --project-name hypemap
+# 2. фронтенд + Cloudflare Workers (Static Assets)
+cd web && npm ci && npm run build && cd ..
+npx wrangler deploy                      # читает wrangler.toml
+
+# альтернатива — Cloudflare Pages:
+# npx wrangler pages deploy web/dist --config wrangler.pages.toml --project-name hypemap
 ```
+
+В CI/дашборде Cloudflare обязательно настройте **Build command**:
+`cd web && npm ci && npm run build` — без него `wrangler deploy` не найдёт `web/dist`
+(ошибка «Could not detect a directory containing static files»).
 
 ## Документация
 

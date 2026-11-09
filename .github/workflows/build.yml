@@ -58,3 +58,26 @@ jobs:
           name: Hypemap-web
           path: web/dist
           if-no-files-found: error
+
+  cloudflare:
+    name: Cloudflare bundle (dry-run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build frontend
+        working-directory: web
+        run: npm ci && npm run build
+
+      # Проверяет, что wrangler.toml + worker/index.ts + web/dist собираются
+      # (без деплоя). Именно этот шаг ловит ошибку «Could not detect a directory
+      # containing static files», если сборка не выполняется перед deploy.
+      - name: Bundle worker and assets
+        run: npx --yes wrangler@4 deploy --dry-run
