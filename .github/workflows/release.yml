@@ -1,0 +1,56 @@
+name: Release
+
+# Публикует готовый Hypemap-1.0.0.jar как ассет релиза.
+# Запуск: Actions → Release → Run workflow (тег можно изменить) или push тега v*.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Тег релиза (например v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build jar and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build plugin
+        working-directory: plugin
+        run: mvn -B -ntp clean package
+
+      - name: Show artifact
+        run: ls -lh plugin/target/*.jar
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: Hypemap ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          body: |
+            Готовый плагин: **Hypemap-1.0.0.jar** (Paper 1.21.3, Java 21).
+
+            Установка:
+            1. Скачайте `Hypemap-1.0.0.jar` из раздела Assets ниже.
+            2. Положите в `plugins/` рядом с Dynmap, перезапустите сервер.
+            3. Первый пароль администратора печатается в консоли один раз
+               (дальше — `/hypemap passwd admin <новый>`).
+            4. Настройка и деплой сайта — `docs/DEPLOY.md`.
+          files: plugin/target/Hypemap-*.jar
+          fail_on_unmatched_files: true
