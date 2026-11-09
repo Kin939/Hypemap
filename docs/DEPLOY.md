@@ -20,9 +20,10 @@
 
 ## 1. Dynmap
 
-1. Скачайте `Dynmap-3.7-beta-8-spigot.jar` с [Modrinth](https://modrinth.com/plugin/dynmap/version/3.7-beta-8)
-   ([прямая ссылка](https://cdn.modrinth.com/data/fRQREgAc/versions/ImNNT17B/Dynmap-3.7-beta-8-spigot.jar), 11,7 МБ) — сборка с поддержкой 1.21.3/1.21.4.
-   В GitHub Releases есть только 3.3-beta-2, она под 1.21 **не работает**.
+1. Скачайте Dynmap под **свою** версию сервера (таблица в [DYNMAP.md §1](DYNMAP.md)):
+   для 1.21–1.21.4 — [`Dynmap-3.7-beta-8-spigot.jar`](https://cdn.modrinth.com/data/fRQREgAc/versions/ImNNT17B/Dynmap-3.7-beta-8-spigot.jar)
+   (11,7 МБ), для 1.21.9–1.21.11 — сборки [jacob1/dynmap](https://github.com/jacob1/dynmap/releases),
+   для 1.21.5–1.21.8 официальной Spigot-сборки нет (подробности в DYNMAP.md).
    Положите jar в `plugins/`, перезапустите сервер: появится `plugins/dynmap/`.
 2. В `plugins/dynmap/configuration.txt`:
 
