@@ -263,9 +263,10 @@ VITE_SITE_TITLE=Hypemap
 В **Settings → Variables and Secrets** добавьте:
 
 ```
-HYPEMAP_ORIGIN        = https://mc.example.com   # адрес плагина (туннель или rProxy панели)
-HYPEMAP_DYNMAP_ORIGIN = https://map.example.com  # НЕ обязательно: адрес Dynmap, если он отдельный
-TILES_CACHE_TTL       = 604800
+HYPEMAP_ORIGIN         = https://mc.example.com   # адрес плагина (туннель или rProxy панели)
+HYPEMAP_DYNMAP_ORIGIN  = https://map.example.com  # НЕ обязательно: адрес Dynmap, если он отдельный
+HYPEMAP_BLUEMAP_ORIGIN = https://map.example.com  # НЕ обязательно: если карту рендерит BlueMap (MC 26.x)
+TILES_CACHE_TTL        = 604800
 ```
 
 `HYPEMAP_DYNMAP_ORIGIN` нужен только когда Dynmap живёт на другом хосте/порту, чем
@@ -306,8 +307,11 @@ CLI: `npx wrangler pages deploy web/dist --config wrangler.pages.toml --project-
 | `/up/configuration` | `DYNMAP_ORIGIN/up/configuration` | 5 минут (Cache API) |
 | `/up/world/*` | `DYNMAP_ORIGIN/up/world/*` | нет (живые игроки) |
 | `/tiles/*` | `DYNMAP_ORIGIN/tiles/*` | 7 дней на edge + браузер, при недоступности origin — прозрачный пиксель |
+| `/bluemap/*` | `HYPEMAP_BLUEMAP_ORIGIN/*` | тайлы 7 дней, `settings.json` 5 минут, `/live/*` без кеша |
 
 `DYNMAP_ORIGIN` = `HYPEMAP_DYNMAP_ORIGIN`, а если он не задан — `HYPEMAP_ORIGIN`.
+Маршруты `/bluemap/*` нужны только когда карту рендерит BlueMap (Minecraft 26.x) —
+см. [BLUEMAP.md](BLUEMAP.md).
 
 Логи: `npx wrangler pages deployment tail` (Pages) или `npx wrangler tail` (Workers).
 
@@ -393,6 +397,26 @@ api:
 
 Порты в панели (раздел **«Порты»**) при этом нужны — они «двери» к плагину и Dynmap,
 но в переменных Cloudflare указываются не они, а HTTPS-адреса rProxy/туннеля.
+
+### 5.5 BlueMap вместо Dynmap (Minecraft 26.x)
+
+Dynmap выпускает сборки для Paper только до **1.21.4** (плюс сборки сообщества для
+1.21.9–1.21.11). Начиная с Minecraft 26.1 действует новая нумерация (26.1, 26.2, 26.3…),
+и Dynmap эти версии не поддерживает — плагин отключается сам
+(`Dynmap is disabled (unsupported platform)`).
+
+В этом случае карту рендерит **BlueMap**, а Hypemap просто берёт тайлы и игроков из него.
+Добавьте переменную:
+
+```
+HYPEMAP_BLUEMAP_ORIGIN = https://map.ваш-домен     # веб-сервер BlueMap, HTTPS на 443
+```
+
+и не задавайте `HYPEMAP_DYNMAP_ORIGIN`. Сайт сам определяет рендерер: сначала пробует
+Dynmap, если не вышло — BlueMap (`/_diag` покажет `"renderer": "bluemap"`).
+
+Установка BlueMap, настройка `maps/*.conf`, ограничения (маркеры в родном UI BlueMap
+и переключатель дня/ночи пока не поддерживаются) — в [BLUEMAP.md](BLUEMAP.md).
 
 ## 6. Cloudflare Access (опционально, но рекомендуется)
 
@@ -484,6 +508,8 @@ npx wrangler pages deploy web/dist --project-name hypemap
 | Сайт открылся, `/api/health` → 502 `upstream_unreachable` | не задан `HYPEMAP_ORIGIN` или туннель не поднят | Variables в дашборде + `systemctl status cloudflared` |
 | Сайт пишет «Не удалось загрузить конфигурацию Dynmap», `/api/health` → `"dynmap": false` | Dynmap не установлен или не загрузился | нет папки `plugins/dynmap/` → поставьте Dynmap под свою версию ([DYNMAP.md §1](DYNMAP.md)) |
 | В консоли `[Dynmap] bukkit version incompatible!` / `Dynmap is disabled (unsupported platform)` | версия сервера новее 1.21.4, Spigot-сборки Dynmap для неё нет | перейти на 1.21.4 (с бэкапом) или на 1.21.9+ со сборкой jacob1 — [DYNMAP.md §1](DYNMAP.md) |
+| Версия сервера 26.x (26.1, 26.2, 26.3…) | Dynmap эти версии не поддерживает | поставить BlueMap 5.29 и задать `HYPEMAP_BLUEMAP_ORIGIN` — [BLUEMAP.md](BLUEMAP.md) |
+| `/_diag` → `"renderer": null`, тайлов нет | не настроен ни Dynmap, ни BlueMap | задайте один из адресов: `HYPEMAP_DYNMAP_ORIGIN` или `HYPEMAP_BLUEMAP_ORIGIN` |
 | Карта серая (пиксель вместо тайлов), `/api/health` работает | не задан/неверен `HYPEMAP_DYNMAP_ORIGIN` либо закрыт порт Dynmap | откройте адрес Dynmap из переменной (`…/up/configuration`); проверьте `webserver-port` и порт в панели; см. `/_diag` |
 | `/api/health` → 502, в сообщении «порт 25960» | адрес с нестандартным портом: Workers ходят только на 80/443 | HTTPS-адрес из rProxy панели или туннель (§5.4) |
 | `/_diag` → `"ok": false` | смотрите поле `hints` — там перечислены конкретные причины | исправьте то, что указано, и обновите страницу |

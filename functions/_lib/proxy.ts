@@ -34,14 +34,19 @@ const TRANSPARENT_PIXEL = Uint8Array.from([
   0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
 ])
 
-export type OriginKind = 'api' | 'dynmap'
+export type OriginKind = 'api' | 'dynmap' | 'bluemap'
 
 /**
  * Адрес origin'а. Для Dynmap можно указать отдельный (другой порт/хост) —
  * это нужно, когда сервер стоит на хостинге без Cloudflare Tunnel.
  */
 export function originOf(env: Env, kind: OriginKind = 'api'): string {
-  const raw = kind === 'dynmap' ? env.HYPEMAP_DYNMAP_ORIGIN || env.HYPEMAP_ORIGIN : env.HYPEMAP_ORIGIN
+  const raw =
+    kind === 'dynmap'
+      ? env.HYPEMAP_DYNMAP_ORIGIN || env.HYPEMAP_ORIGIN
+      : kind === 'bluemap'
+        ? env.HYPEMAP_BLUEMAP_ORIGIN || ''
+        : env.HYPEMAP_ORIGIN
   const value = (raw || '').trim().replace(/\/+$/, '')
   if (!value) return ''
   // Терпим адрес без схемы: в дашборде легко написать `5.9.235.227:25960`.
@@ -111,7 +116,9 @@ export async function proxy(
       'origin_not_configured',
       kind === 'dynmap'
         ? 'Не задан HYPEMAP_ORIGIN (или HYPEMAP_DYNMAP_ORIGIN) — адрес сервера с Dynmap'
-        : 'Не задан HYPEMAP_ORIGIN — адрес плагина Hypemap',
+        : kind === 'bluemap'
+          ? 'Не задан HYPEMAP_BLUEMAP_ORIGIN — адрес веб-сервера BlueMap'
+          : 'Не задан HYPEMAP_ORIGIN — адрес плагина Hypemap',
     )
   }
 
@@ -183,7 +190,12 @@ export async function proxy(
   if (pathname.startsWith('/api/')) {
     responseHeaders.set('cache-control', 'no-store')
   } else if (options.cacheTtl !== undefined) {
-    responseHeaders.set('cache-control', `public, max-age=${options.cacheTtl}, immutable`)
+    // `immutable` имеет смысл только для изображений; JSON-настройки меняются.
+    const isImage = (responseHeaders.get('content-type') || '').startsWith('image/')
+    responseHeaders.set(
+      'cache-control',
+      `public, max-age=${options.cacheTtl}${isImage ? ', immutable' : ''}`,
+    )
     responseHeaders.set('x-hypemap-cache', 'MISS')
   }
 

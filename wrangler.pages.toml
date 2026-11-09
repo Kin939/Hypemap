@@ -17,3 +17,5 @@ TILES_CACHE_TTL = "604800"
 # ВАЖНО: только HTTPS/порт 443 (или http/80). Нестандартные порты вроде :25960
 # из воркера не работают — используйте rProxy панели или туннель (docs/DEPLOY.md §5.4).
 # HYPEMAP_DYNMAP_ORIGIN = "https://map.example.com"
+# Если карту рендерит BlueMap (Minecraft 26.x, где Dynmap не работает):
+# HYPEMAP_BLUEMAP_ORIGIN = "https://bluemap.example.com"

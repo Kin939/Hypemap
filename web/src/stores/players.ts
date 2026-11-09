@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchWorldUpdate } from '@/api/dynmap'
+import { fetchBlueMapPlayers } from '@/api/bluemap'
 import type { DynmapPlayer } from '@/api/types'
 import { useServerStore } from './server'
 
@@ -31,11 +32,34 @@ export const usePlayersStore = defineStore('players', () => {
     return Math.min(Math.max(ms, 1500), 60_000)
   })
 
+  /** BlueMap отдаёт свой список игроков — приводим его к общему виду. */
+  async function pollBlueMap(signal: AbortSignal): Promise<void> {
+    const mapId = server.currentMap?.world ?? ''
+    const list = await fetchBlueMapPlayers(mapId, signal)
+    players.value = (list || [])
+      .filter((entry) => typeof entry.name === 'string' && entry.position)
+      .map((entry) => ({
+        name: entry.name,
+        account: entry.uuid ?? entry.name,
+        world: mapId,
+        x: entry.position?.x ?? 0,
+        y: entry.position?.y ?? 64,
+        z: entry.position?.z ?? 0,
+      }))
+    count.value = players.value.length
+    lastUpdate.value = Date.now()
+    connected.value = true
+  }
+
   async function poll(): Promise<void> {
     if (!running) return
     controller?.abort()
     controller = new AbortController()
     try {
+      if (server.renderer === 'bluemap') {
+        await pollBlueMap(controller.signal)
+        return
+      }
       const response = await fetchWorldUpdate(world.value, Date.now(), controller.signal)
       players.value = (response.players || []).filter(
         (player) => player.world === world.value && player.name !== undefined,

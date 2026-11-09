@@ -8,6 +8,7 @@ import {
   tileLayerOptions,
   tileUrl,
 } from './dynmapMath'
+import { BlueMapLayer } from './BlueMapLayer'
 
 export interface MapView {
   x: number
@@ -66,7 +67,7 @@ export class MapEngine {
   private readonly faceUrl: (name: string) => string
 
   private def: MapDefinition | null = null
-  private tileLayer: DynmapTileLayer | null = null
+  private tileLayer: DynmapTileLayer | BlueMapLayer | null = null
 
   private readonly townGroup: L.LayerGroup
   private readonly playerGroup: L.LayerGroup
@@ -131,12 +132,16 @@ export class MapEngine {
     this.map.setMinZoom(def.minZoom)
     this.map.setMaxZoom(def.maxZoom)
 
-    this.tileLayer = new DynmapTileLayer(def)
+    this.tileLayer =
+      def.renderer === 'bluemap' && def.blueMap
+        ? new BlueMapLayer({ mapId: def.blueMap.id, grid: def.blueMap.grid })
+        : new DynmapTileLayer(def)
     this.tileLayer.addTo(this.map)
 
     if (!previous) {
       const center = locationToLatLng(def, def.center)
-      this.map.setView(center, Math.min(def.maxZoom, 2))
+      const zoom = def.renderer === 'bluemap' ? 0 : Math.min(def.maxZoom, 2)
+      this.map.setView(center, zoom)
       this.emitView()
     } else {
       // при смене карты сохраняем мировые координаты в центре
@@ -340,7 +345,7 @@ export class MapEngine {
   /* -------------------------------------------------------------------- view */
 
   setDay(day: boolean): void {
-    this.tileLayer?.setDay(day)
+    if (this.tileLayer instanceof DynmapTileLayer) this.tileLayer.setDay(day)
   }
 
   setNightPreview(enabled: boolean): void {
