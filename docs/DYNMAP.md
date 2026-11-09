@@ -41,8 +41,13 @@ cyrillic-support: true
 
 Dynmap рисует карту только по перспективам из `perspectives.txt`
 (встроенный класс `org.dynmap.hdmap.IsoHDPerspective`). **Top-down** — это та же
-перспектива с `inclination: 90`. Готовые имена: `iso_N_90_lowres`, `iso_N_90_medres`,
-`iso_N_90_hires` (а также `_vlowres`, и варианты `iso_S_90_*`, `iso_E_90_*`, `iso_W_90_*`).
+перспектива с `inclination: 90`: `iso_S_90_lowres|medres|hires|vlowres`, а также
+`iso_N_90_*`, `iso_E_90_*`, `iso_W_90_*`.
+
+> Имя перспективы означает, **откуда** смотрит камера. Поэтому привычная ориентация
+> «север сверху, восток справа» — это `iso_S_90_*` (камера с юга). `iso_N_90_*` даст
+> перевёрнутую карту (юг сверху, восток слева). Проверяется матрицей `worldtomap`
+> в `/up/configuration`: у `iso_S_90` это `[+scale,0,0, 0,0,-scale, 0,1,0]`.
 
 ```yaml
 worlds:
@@ -53,7 +58,7 @@ worlds:
         name: flat
         title: Поверхность
         prefix: flat
-        perspective: iso_N_90_medres
+        perspective: iso_S_90_medres
         shader: stdtexture
         lighting: shadows
         mapzoomin: 2
@@ -75,7 +80,7 @@ worlds:
         name: flat
         title: Нижний мир
         prefix: flat
-        perspective: iso_N_90_medres
+        perspective: iso_S_90_medres
         shader: stdtexture
         lighting: nethershadows
         background: "#300806"

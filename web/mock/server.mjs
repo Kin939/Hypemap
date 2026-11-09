@@ -73,9 +73,10 @@ const mapConfig = {
   protected: false,
   'image-format': 'png',
   nightandday: false,
-  perspective: 'iso_N_90',
-  worldtomap: [4, 0, 0, 0, 0, 4, 0, 0, 0],
-  maptoworld: [0.25, 0, 0, 0, 0, 0, 0, 0.25, 0],
+  perspective: 'iso_S_90_lowres',
+  // iso_S_90 (scale 4): север сверху, восток справа — как отдаёт настоящий Dynmap
+  worldtomap: [4, 0, 0, 0, 0, -4, 0, 1, 0],
+  maptoworld: [0.25, 0, 0, 0, 0, 1, 0, -0.25, 0],
 }
 
 const configuration = {

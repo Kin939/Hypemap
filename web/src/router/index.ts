@@ -53,4 +53,9 @@ router.beforeEach(async (to) => {
   return true
 })
 
+// Ошибки навигации (в т.ч. не загрузившийся чанк страницы) не должны теряться молча
+router.onError((error) => {
+  console.error('[router]', error)
+})
+
 export default router

@@ -22,6 +22,14 @@ const PX_PER_BLOCK = 4
 const SIZE = BLOCKS * PX_PER_BLOCK
 const TILE = 128
 const NATIVE_ZOOM = 3
+/**
+ * Dynmap кладёт мир не в начало пиксельной плоскости: точка (0,0) мира
+ * попадает в native-пиксель (0, tileSize) — см. hdmap.js, fromLatLngToLocation.
+ * Поэтому базовое изображение выше мира на один тайл.
+ */
+const BASE_W = SIZE
+const BASE_H = SIZE + TILE
+const OFFSET_Y = TILE
 
 const WORLD = {
   world: 'world',
@@ -40,8 +48,9 @@ const WORLD = {
   background: '#0b1017',
   center: { x: 256, y: 64, z: 256 },
   projection: {
-    worldToMap: [4, 0, 0, 0, 0, 4, 0, 0, 0],
-    mapToWorld: [0.25, 0, 0, 0, 0, 0, 0, 0.25, 0],
+    // iso_S_90_lowres: tileX = 4x, tileY = -4z (север сверху, восток справа)
+    worldToMap: [4, 0, 0, 0, 0, -4, 0, 1, 0],
+    mapToWorld: [0.25, 0, 0, 0, 0, 1, 0, -0.25, 0],
     nativeZoomLevels: NATIVE_ZOOM,
     tileSize: TILE,
     prefix: 'flat',
@@ -237,15 +246,15 @@ function buildBlockMap(): Rgb[][] {
 /* ------------------------------------------------------------ растеризация -- */
 
 function renderBase(blockMap: Rgb[][]): Uint8Array {
-  const image = new Uint8Array(SIZE * SIZE * 3)
+  const image = new Uint8Array(BASE_W * BASE_H * 3)
   for (let bz = 0; bz < BLOCKS; bz += 1) {
     for (let bx = 0; bx < BLOCKS; bx += 1) {
       const base = blockMap[bz][bx]
       for (let py = 0; py < PX_PER_BLOCK; py += 1) {
         for (let px = 0; px < PX_PER_BLOCK; px += 1) {
           const x = bx * PX_PER_BLOCK + px
-          const y = bz * PX_PER_BLOCK + py
-          const offset = (y * SIZE + x) * 3
+          const y = OFFSET_Y + bz * PX_PER_BLOCK + py
+          const offset = (y * BASE_W + x) * 3
           // лёгкая «пиксельная» текстура
           const noise = (hash2(bx * 4 + px, bz * 4 + py, 99) - 0.5) * 14
           image[offset] = clamp(base[0] + noise)
@@ -285,8 +294,8 @@ function cropResize(
         for (let sx = 0; sx < step; sx += 1) {
           const px = startX + sx
           const py = startY + sy
-          const offset = (py * SIZE + px) * 3
-          if (px < 0 || py < 0 || px >= SIZE || py >= SIZE) {
+          const offset = (py * BASE_W + px) * 3
+          if (px < 0 || py < 0 || px >= BASE_W || py >= BASE_H) {
             r += background[0]
             g += background[1]
             b += background[2]
@@ -400,18 +409,25 @@ function main(): void {
 
   let tiles = 0
   const levels = [0, 1, 2, 3]
+  // прямоугольник мира в native-пикселях: x ∈ [0, SIZE), y ∈ [TILE, BASE_H)
+  const minX = 0
+  const maxX = BASE_W
+  const minY = OFFSET_Y
+  const maxY = BASE_H
   for (const level of levels) {
     const zoom = NATIVE_ZOOM - level
     const step = TILE * 2 ** level
-    const span = Math.ceil(16 / 2 ** level) + 2
-    for (let ty = -span; ty <= span; ty += 1) {
-      for (let tx = -span; tx <= span; tx += 1) {
-        // Leaflet-пиксели тайла: [tx*128, (tx+1)*128) × [ty*128, ...)
-        // native-пиксель мира = leaflet-пиксель * 2^level
+    const fromX = Math.floor(minX / step)
+    const toX = Math.ceil(maxX / step) - 1
+    const fromY = Math.floor(minY / step)
+    const toY = Math.ceil(maxY / step) - 1
+    for (let ty = fromY; ty <= toY; ty += 1) {
+      for (let tx = fromX; tx <= toX; tx += 1) {
+        // Тайл (tx, ty) на зуме покрывает native-пиксели
+        // [tx*step, (tx+1)*step) × [ty*step, (ty+1)*step)
         const left = tx * step
-        const top = TILE - (ty + 1) * step
+        const top = ty * step
         const size = step
-        if (left >= SIZE || top >= SIZE || left + size <= 0 || top + size <= 0) continue
 
         const tile = cropResize(base, left, top, size, TILE, background)
         const url = tileUrl(WORLD as never, { x: tx, y: ty, z: zoom }, false, '')

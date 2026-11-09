@@ -40,7 +40,7 @@
      name: flat
      title: Поверхность
      prefix: flat
-     perspective: iso_N_90_medres
+     perspective: iso_S_90_medres
      shader: stdtexture
      lighting: shadows
      mapzoomin: 2
