@@ -12,7 +12,8 @@
 | `api/[[path]].ts` | `/api/*` | прокси на `HYPEMAP_ORIGIN/api/*`, `no-store` |
 | `up/[[path]].ts` | `/up/*` | прокси на Dynmap; `/up/configuration` кешируется 5 минут |
 | `tiles/[[path]].ts` | `/tiles/*` | прокси на Dynmap; кеш 7 дней (Cache API), при сбое — прозрачный пиксель |
-| `_middleware.ts` | всё | CSP, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy` |
+| `_middleware.ts` | всё | CSP, заголовки безопасности, а также `/_diag` |
+| `_lib/diag.ts` | `/_diag` | самодиагностика: запрос к обоим origin'ам + подсказки (в воркере вызывается из `worker/index.ts`) |
 | `_lib/proxy.ts` | — | общая логика: заголовки, Service Token Cloudflare Access, кеш, ошибки |
 | `_lib/types.ts` | — | минимальные типы Pages Functions (без `@cloudflare/workers-types` в сборке) |
 
@@ -20,7 +21,8 @@
 
 | Имя | Тип | Назначение |
 | --- | --- | --- |
-| `HYPEMAP_ORIGIN` | var | `https://mc.example.com` — хостнейм туннеля |
+| `HYPEMAP_ORIGIN` | var | `https://mc.example.com` — адрес плагина (туннель или rProxy панели) |
+| `HYPEMAP_DYNMAP_ORIGIN` | var | адрес Dynmap, если он на другом хосте/порту; иначе берётся `HYPEMAP_ORIGIN` |
 | `TILES_CACHE_TTL` | var | кеш тайлов в секундах, по умолчанию `604800` |
 | `ACCESS_CLIENT_ID` | secret | Service Token Cloudflare Access (если туннель закрыт) |
 | `ACCESS_CLIENT_SECRET` | secret | Service Token secret |

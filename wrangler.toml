@@ -19,8 +19,10 @@ not_found_handling = "single-page-application"
 HYPEMAP_ORIGIN = "https://mc.example.com"
 # Кеш тайлов на edge, секунды (7 дней)
 TILES_CACHE_TTL = "604800"
-# Если Dynmap доступен по другому адресу/порту (хостинг без туннеля) — раскомментируйте:
-# HYPEMAP_DYNMAP_ORIGIN = "http://185.12.34.56:8123"
+# Если Dynmap доступен по другому адресу (хостинг без туннеля) — раскомментируйте.
+# ВАЖНО: только HTTPS/порт 443 (или http/80). Нестандартные порты вроде :25960
+# из воркера не работают — используйте rProxy панели или туннель (docs/DEPLOY.md §5.4).
+# HYPEMAP_DYNMAP_ORIGIN = "https://map.example.com"
 
 # Секреты (не храните в репозитории!):
 #   npx wrangler secret put ACCESS_CLIENT_ID

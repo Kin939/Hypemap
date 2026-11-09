@@ -1,4 +1,5 @@
 import type { Env, PagesContext } from '../functions/_lib/types'
+import { diag } from '../functions/_lib/diag'
 import { jsonError, proxy } from '../functions/_lib/proxy'
 import { withSecurityHeaders } from '../functions/_lib/security'
 
@@ -10,6 +11,7 @@ import { withSecurityHeaders } from '../functions/_lib/security'
  * тот же прокси подключается здесь, а статика отдаётся биндингом ASSETS.
  *
  * Маршрутизация:
+ *   /_diag   → самодиагностика: статусы обоих origin'ов и подсказки
  *   /api/*   → HYPEMAP_ORIGIN/api/*        (плагин, no-store)
  *   /up/*    → HYPEMAP_ORIGIN/up/*         (Dynmap; configuration кеш 5 минут)
  *   /tiles/* → HYPEMAP_ORIGIN/tiles/*      (тайлы, кеш 7 дней, при сбое — пиксель)
@@ -33,6 +35,10 @@ async function fetch(request: Request, env: Env, ctx: WorkerExecutionContext): P
       if (!env.ASSETS) throw new Error('Не настроен биндинг ASSETS')
       return env.ASSETS.fetch(request)
     },
+  }
+
+  if (url.pathname === '/_diag') {
+    return diag(env)
   }
 
   if (url.pathname.startsWith('/api/')) {
