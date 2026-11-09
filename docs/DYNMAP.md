@@ -5,13 +5,22 @@ Hypemap использует Dynmap как **рендер тайлов** и ка
 
 ## 1. Установка
 
-1. Скачайте Spigot-сборку Dynmap (3.7-beta-8 или новее, например 3.8-beta-1) со
-   [страницы релизов](https://github.com/webbukkit/dynmap/releases) (`Dynmap-…-spigot.jar`).
-2. Положите в `plugins/` и перезапустите сервер. Появится `plugins/dynmap/`.
-3. Проверьте, что веб-сервер поднялся: `curl -sI http://127.0.0.1:8123/ | head -1`.
+**Скачать:** [Dynmap 3.7-beta-8 (Modrinth)](https://modrinth.com/plugin/dynmap/version/3.7-beta-8) —
+файл [`Dynmap-3.7-beta-8-spigot.jar`](https://cdn.modrinth.com/data/fRQREgAc/versions/ImNNT17B/Dynmap-3.7-beta-8-spigot.jar),
+11,7 МБ. Это первая сборка с поддержкой **1.21.3/1.21.4**, отдельный `bukkit-helper`
+не нужен — он входит в jar.
 
-Dynmap поддерживает Paper 1.21.x, отдельный `bukkit-helper` под 1.21.3 не требуется —
-он входит в сборку.
+> В [GitHub Releases](https://github.com/webbukkit/dynmap/releases) проект застрял на
+> 3.3-beta-2 (2021 год) — она **не поддерживает 1.21** и приведёт к ошибкам при входе.
+> Актуальные сборки публикуются на [Modrinth](https://modrinth.com/plugin/dynmap/version).
+
+1. Положите jar в `plugins/` (в панели: **Файлы → plugins → Загрузить**).
+2. Перезапустите сервер (не `/reload`). Появится папка `plugins/dynmap/`.
+3. Проверьте, что веб-сервер поднялся: `curl -sI http://127.0.0.1:8123/ | head -1`
+   (или откройте `http://IP:8123/` в браузере, если порт открыт в панели).
+
+Если папки `plugins/dynmap/` нет, значит jar не загрузился или версия не подошла —
+смотрите консоль: там будет `Could not load plugins/dynmap/...`.
 
 ## 2. `plugins/dynmap/configuration.txt`
 

@@ -20,8 +20,10 @@
 
 ## 1. Dynmap
 
-1. Скачайте `Dynmap-3.7-beta-8-spigot.jar` (или новее) со страницы релизов Dynmap,
-   положите в `plugins/`, перезапустите сервер.
+1. Скачайте `Dynmap-3.7-beta-8-spigot.jar` с [Modrinth](https://modrinth.com/plugin/dynmap/version/3.7-beta-8)
+   ([прямая ссылка](https://cdn.modrinth.com/data/fRQREgAc/versions/ImNNT17B/Dynmap-3.7-beta-8-spigot.jar), 11,7 МБ) — сборка с поддержкой 1.21.3/1.21.4.
+   В GitHub Releases есть только 3.3-beta-2, она под 1.21 **не работает**.
+   Положите jar в `plugins/`, перезапустите сервер: появится `plugins/dynmap/`.
 2. В `plugins/dynmap/configuration.txt`:
 
    ```yaml
@@ -51,6 +53,10 @@
    — в JSON должна быть карта с `"type":"HDMapType"`.
 
 ## 2. Плагин Hypemap
+
+> Hypemap **не рисует тайлы сам** — он показывает поверх карты Dynmap. Без Dynmap
+> сайт откроется, но напишет «Не удалось загрузить конфигурацию Dynmap», а `/api/health`
+> вернёт `"dynmap": false`. Поэтому шаг 1 обязателен.
 
 ### 2.1 Сборка локально
 
@@ -473,6 +479,7 @@ npx wrangler pages deploy web/dist --project-name hypemap
 | `Could not detect a directory containing static files` при `wrangler deploy` | не выполнен шаг сборки: нет `web/dist` | Build command = `cd web && npm ci && npm run build`, deploy = `npx wrangler deploy` |
 | `Configuration file for Pages projects does not support 'main'` | Pages-проект читает `wrangler.toml` от Workers | деплойте Pages с `--config wrangler.pages.toml` |
 | Сайт открылся, `/api/health` → 502 `upstream_unreachable` | не задан `HYPEMAP_ORIGIN` или туннель не поднят | Variables в дашборде + `systemctl status cloudflared` |
+| Сайт пишет «Не удалось загрузить конфигурацию Dynmap», `/api/health` → `"dynmap": false` | Dynmap не установлен или не загрузился | нет папки `plugins/dynmap/` → поставьте Dynmap 3.7-beta-8 ([DYNMAP.md §1](DYNMAP.md)), перезапустите сервер |
 | Карта серая (пиксель вместо тайлов), `/api/health` работает | не задан/неверен `HYPEMAP_DYNMAP_ORIGIN` либо закрыт порт Dynmap | откройте адрес Dynmap из переменной (`…/up/configuration`); проверьте `webserver-port` и порт в панели; см. `/_diag` |
 | `/api/health` → 502, в сообщении «порт 25960» | адрес с нестандартным портом: Workers ходят только на 80/443 | HTTPS-адрес из rProxy панели или туннель (§5.4) |
 | `/_diag` → `"ok": false` | смотрите поле `hints` — там перечислены конкретные причины | исправьте то, что указано, и обновите страницу |
