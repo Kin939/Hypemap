@@ -1,7 +1,9 @@
 name: Release
 
-# Публикует готовый Hypemap-1.0.0.jar как ассет релиза.
-# Запуск: Actions → Release → Run workflow (тег можно изменить) или push тега v*.
+# Собирает плагин и публикует релиз:
+#   • Hypemap-1.0.0.jar        — готовый плагин для plugins/
+#   • Hypemap-1.0.0-full.zip   — плагин + исходники + инструкция ЧИТАЙ-МЕНЯ.txt
+# Запуск: push тега v* или вручную (Actions → Release → Run workflow).
 on:
   push:
     tags: ['v*']
@@ -17,8 +19,10 @@ permissions:
 
 jobs:
   release:
-    name: Build jar and publish
+    name: Build and publish
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,24 +37,31 @@ jobs:
         working-directory: plugin
         run: mvn -B -ntp clean package
 
-      - name: Show artifact
+      - name: Show jar
         run: ls -lh plugin/target/*.jar
 
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ inputs.tag || github.ref_name }}
-          target_commitish: ${{ github.sha }}
-          name: Hypemap ${{ inputs.tag || github.ref_name }}
-          generate_release_notes: true
-          body: |
-            Готовый плагин: **Hypemap-1.0.0.jar** (Paper 1.21.3, Java 21).
+      - name: Pack "all in one" zip
+        run: |
+          JAR="$(ls plugin/target/Hypemap-*.jar | head -1)"
+          python3 scripts/make-bundle.py --jar "$JAR" --out dist/Hypemap-1.0.0-full.zip
+          python3 scripts/make-bundle.py --out dist/Hypemap-1.0.0-project.zip
+          ls -lh dist
 
-            Установка:
-            1. Скачайте `Hypemap-1.0.0.jar` из раздела Assets ниже.
-            2. Положите в `plugins/` рядом с Dynmap, перезапустите сервер.
-            3. Первый пароль администратора печатается в консоли один раз
-               (дальше — `/hypemap passwd admin <новый>`).
-            4. Настройка и деплой сайта — `docs/DEPLOY.md`.
-          files: plugin/target/Hypemap-*.jar
-          fail_on_unmatched_files: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "Hypemap $TAG" \
+              --target "$GITHUB_SHA" \
+              --generate-notes \
+              --notes "Готовый плагин: **Hypemap-1.0.0.jar** (Paper 1.21.3, Java 21).
+          Архив со всем сразу: **Hypemap-1.0.0-full.zip** (jar + исходники + ЧИТАЙ-МЕНЯ.txt).
+
+          Установка: положить jar в \`plugins/\` рядом с Dynmap → перезапустить сервер →
+          взять из консоли одноразовый пароль \`admin\` → \`/hypemap passwd admin <новый>\`.
+          Дальше — \`docs/DEPLOY.md\`."
+          fi
+          gh release upload "$TAG" plugin/target/Hypemap-*.jar dist/*.zip --clobber
+          gh release view "$TAG" --json assets --jq '.assets[] | "\(.name) \(.size) байт"'

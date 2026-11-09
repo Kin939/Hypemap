@@ -33,3 +33,7 @@ secrets.yml
 *.iml
 .DS_Store
 Thumbs.db
+
+# архивы, собранные scripts/make-bundle.py
+Hypemap-*.zip
+dist/
