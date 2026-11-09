@@ -1,0 +1,29 @@
+# ============================================================================
+#  Cloudflare Workers + Static Assets (режим по умолчанию)
+#  Деплой:  npx wrangler deploy
+#  Ожидает собранный фронтенд:  cd web && npm ci && npm run build
+# ============================================================================
+name = "hypemap"
+main = "worker/index.ts"
+compatibility_date = "2025-12-01"
+
+# Статика из web/dist + SPA-фолбэк (/admin, /towns отдают index.html)
+[assets]
+directory = "./web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[vars]
+# Публичный хостнейм туннеля, за которым живёт Minecraft-сервер.
+# Можно переопределить в Dashboard → Settings → Variables and Secrets.
+HYPEMAP_ORIGIN = "https://mc.example.com"
+# Кеш тайлов на edge, секунды (7 дней)
+TILES_CACHE_TTL = "604800"
+# Если Dynmap доступен по другому адресу (хостинг без туннеля) — раскомментируйте.
+# ВАЖНО: только HTTPS/порт 443 (или http/80). Нестандартные порты вроде :25960
+# из воркера не работают — используйте rProxy панели или туннель (docs/DEPLOY.md §5.4).
+# HYPEMAP_DYNMAP_ORIGIN = "https://map.example.com"
+
+# Секреты (не храните в репозитории!):
+#   npx wrangler secret put ACCESS_CLIENT_ID
+#   npx wrangler secret put ACCESS_CLIENT_SECRET

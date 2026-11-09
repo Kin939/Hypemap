@@ -1,0 +1,67 @@
+name: Release
+
+# Собирает плагин и публикует релиз:
+#   • Hypemap-1.0.0.jar        — готовый плагин для plugins/
+#   • Hypemap-1.0.0-full.zip   — плагин + исходники + инструкция ЧИТАЙ-МЕНЯ.txt
+# Запуск: push тега v* или вручную (Actions → Release → Run workflow).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Тег релиза (например v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build plugin
+        working-directory: plugin
+        run: mvn -B -ntp clean package
+
+      - name: Show jar
+        run: ls -lh plugin/target/*.jar
+
+      - name: Pack "all in one" zip
+        run: |
+          JAR="$(ls plugin/target/Hypemap-*.jar | head -1)"
+          python3 scripts/make-bundle.py --jar "$JAR" --out dist/Hypemap-1.0.0-full.zip
+          python3 scripts/make-bundle.py --out dist/Hypemap-1.0.0-project.zip
+          ls -lh dist
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "Hypemap $TAG" \
+              --target "$GITHUB_SHA" \
+              --generate-notes \
+              --notes "Готовый плагин: **Hypemap-1.0.0.jar** (Paper 1.21.3, Java 21).
+          Архив со всем сразу: **Hypemap-1.0.0-full.zip** (jar + исходники + ЧИТАЙ-МЕНЯ.txt).
+
+          Установка: положить jar в \`plugins/\` рядом с Dynmap → перезапустить сервер →
+          взять из консоли одноразовый пароль \`admin\` → \`/hypemap passwd admin <новый>\`.
+          Дальше — \`docs/DEPLOY.md\`."
+          fi
+          gh release upload "$TAG" plugin/target/Hypemap-*.jar dist/*.zip --clobber
+          gh release view "$TAG" --json assets --jq '.assets[] | "\(.name) \(.size) байт"'
