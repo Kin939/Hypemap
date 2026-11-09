@@ -155,6 +155,11 @@ curl -s -X POST http://127.0.0.1:8800/api/auth/login \
 
 Туннель даёт публичный HTTPS на ваш сервер **без открытых портов**.
 
+> **Не обязателен.** Если сервер в панели хостинга без SSH (только FTP) и `cloudflared`
+> поставить некуда — пропустите этот раздел и сразу перейдите к
+> [§5.4](#54-хостинг-без-ssh-два-порта-вместо-туннеля): там два открытых TCP-порта
+> и адреса вида `http://IP:порт` в переменных.
+
 ```bash
 # 1. установка (Debian/Ubuntu)
 curl -L -o cloudflared.deb \
@@ -249,9 +254,14 @@ VITE_SITE_TITLE=Hypemap
 В **Settings → Variables and Secrets** добавьте:
 
 ```
-HYPEMAP_ORIGIN   = https://mc.example.com     # хостнейм Cloudflare Tunnel
-TILES_CACHE_TTL  = 604800
+HYPEMAP_ORIGIN        = https://mc.example.com   # адрес плагина (туннель или http://IP:порт)
+HYPEMAP_DYNMAP_ORIGIN = https://map.example.com  # НЕ обязательно: адрес Dynmap, если он отдельный
+TILES_CACHE_TTL       = 604800
 ```
+
+`HYPEMAP_DYNMAP_ORIGIN` нужен только когда Dynmap живёт на другом хосте/порту, чем
+плагин. Тогда `/up/*` и `/tiles/*` идут на него, а `/api/*` — на `HYPEMAP_ORIGIN`.
+Не задан — оба маршрута используют `HYPEMAP_ORIGIN` (случай одного туннеля/reverse-proxy).
 
 Вручную с машины:
 
@@ -284,15 +294,65 @@ CLI: `npx wrangler pages deploy web/dist --config wrangler.pages.toml --project-
 | Путь | Куда | Кеш |
 | --- | --- | --- |
 | `/api/*` | `HYPEMAP_ORIGIN/api/*` | `no-store` |
-| `/up/configuration` | `HYPEMAP_ORIGIN/up/configuration` | 5 минут (Cache API) |
-| `/up/world/*` | `HYPEMAP_ORIGIN/up/world/*` | нет (живые игроки) |
-| `/tiles/*` | `HYPEMAP_ORIGIN/tiles/*` | 7 дней на edge + браузер, при недоступности origin — прозрачный пиксель |
+| `/up/configuration` | `DYNMAP_ORIGIN/up/configuration` | 5 минут (Cache API) |
+| `/up/world/*` | `DYNMAP_ORIGIN/up/world/*` | нет (живые игроки) |
+| `/tiles/*` | `DYNMAP_ORIGIN/tiles/*` | 7 дней на edge + браузер, при недоступности origin — прозрачный пиксель |
+
+`DYNMAP_ORIGIN` = `HYPEMAP_DYNMAP_ORIGIN`, а если он не задан — `HYPEMAP_ORIGIN`.
 
 Логи: `npx wrangler pages deployment tail` (Pages) или `npx wrangler tail` (Workers).
 
 > Лимиты Free-тарифа: у Workers — 100 000 запросов/сутки, у Pages — 100 000 запросов Functions.
 > Кеш тайлов на edge экономит и запросы, и трафик, но каждый уникальный тайл — это запрос.
 > Для очень больших миров тайлы стоит вынести в R2 (см. «Масштабирование»).
+
+### 5.4 Хостинг без SSH: два порта вместо туннеля
+
+Типичный случай: сервер арендован в панели (например
+[hosting-minecraft.pro](https://hosting-minecraft.pro/)), SSH не выдают, есть только
+FTP/SFTP и консоль. `cloudflared` поставить некуда — значит, туннеля не будет, и
+Cloudflare должен ходить на **публичные адреса с портами**. Ничего дополнительно
+писать в коде не нужно, всё решается переменными.
+
+**Что открыть.** Два TCP-порта в панели (**Ресурсы → Порты → добавить порт**):
+
+| Порт | Кто слушает | Адрес в переменной |
+| --- | --- | --- |
+| `8800` (любой свободный) | плагин Hypemap → `HYPEMAP_ORIGIN` | `http://185.12.34.56:8800` |
+| `8123` (или выданный панелью) | Dynmap `webserver-port` → `HYPEMAP_DYNMAP_ORIGIN` | `http://185.12.34.56:8123` |
+
+Публичный IP сервера смотрите в панели на главной странице услуги (там же, где
+адрес для подключения в Minecraft, без порта игры).
+
+**Что заполнить в Cloudflare** (`Settings → Variables and Secrets`):
+
+```
+HYPEMAP_ORIGIN        = http://185.12.34.56:8800
+HYPEMAP_DYNMAP_ORIGIN = http://185.12.34.56:8123
+TILES_CACHE_TTL       = 604800
+```
+
+`https://` в этих значениях не пишите: у портов хостинга нет сертификата. Шифрование
+обеспечивает Cloudflare — браузер видит только `https://ваш-домен`, смешанного
+контента не возникает.
+
+**Порядок проверки.**
+
+1. Плагин: `http://185.12.34.56:8800/api/health` в браузере → `{"status":"ok",...}`.
+   Если не открывается — порт не добавлен в панели либо плагин не запустился (смотрите
+   `/plugins/Hypemap/`, консоль сервера).
+2. Dynmap: `http://185.12.34.56:8123/up/configuration` → JSON. Если нет — в
+   `plugins/dynmap/configuration.txt` проверьте `webserver-port: 8123` и что порт
+   открыт в панели.
+3. Сайт: `https://ваш-домен` → карта; `https://ваш-домен/api/health` → JSON (это уже
+   прокси через воркер, значит origin задан верно).
+
+**Если портов дают мало / только один.** Оставьте один порт на плагин, а Dynmap
+включите через бонус хостинга «прокси для Dynmap карты» (если он есть в тарифе) —
+тогда `HYPEMAP_DYNMAP_ORIGIN` будет вида `http://dynmap-xxxx.hosting-minecraft.pro`
+(точный адрес выдаёт поддержка/панель). Второй вариант — один обратный прокси на
+своём домене, который разводит пути: `/api/*` на `:8800`, остальное на `:8123`;
+в этом случае достаточно только `HYPEMAP_ORIGIN`.
 
 ## 6. Cloudflare Access (опционально, но рекомендуется)
 
@@ -377,6 +437,7 @@ npx wrangler pages deploy web/dist --project-name hypemap
 | `Could not detect a directory containing static files` при `wrangler deploy` | не выполнен шаг сборки: нет `web/dist` | Build command = `cd web && npm ci && npm run build`, deploy = `npx wrangler deploy` |
 | `Configuration file for Pages projects does not support 'main'` | Pages-проект читает `wrangler.toml` от Workers | деплойте Pages с `--config wrangler.pages.toml` |
 | Сайт открылся, `/api/health` → 502 `upstream_unreachable` | не задан `HYPEMAP_ORIGIN` или туннель не поднят | Variables в дашборде + `systemctl status cloudflared` |
+| Карта серая (пиксель вместо тайлов), `/api/health` работает | не задан/неверен `HYPEMAP_DYNMAP_ORIGIN` либо закрыт порт Dynmap | откройте `http://IP:8123/up/configuration` напрямую; проверьте `webserver-port` и порт в панели |
 | Карта серая | нет тайлов | `fullrender`, проверьте `prefix` в worlds.txt |
 | `401` при сохранении | истёк JWT (12 ч) | войдите заново; проверьте часы на сервере |
 | `403` на удаление | роль EDITOR | `/hypemap role <логин> ADMIN` |

@@ -7,16 +7,21 @@ Dynmap рендерит тайлы, Hypemap рисует над ними **св�
 ![Превью интерфейса](docs/preview.png)
 
 ```
-Браузер ──► Cloudflare Pages (Vue 3 SPA + Pages Functions прокси)
+Браузер ──► Cloudflare Workers + Static Assets (Vue 3 SPA + прокси)
                     │  /api/*   /up/*   /tiles/*
                     ▼
-            Cloudflare Tunnel (без открытых портов)
+      Cloudflare Tunnel (без открытых портов)  —ИЛИ—  обычный IP:порт
                     │
       ┌─────────────┴──────────────┐
       ▼                            ▼
 Hypemap (плагин, :8800)      Dynmap (:8123)
 SQLite + REST + Marker API   тайлы, /up/*, аватарки
 ```
+
+Прокси в Workers знает **два адреса**: `HYPEMAP_ORIGIN` (плагин: `/api/*`) и
+`HYPEMAP_DYNMAP_ORIGIN` (Dynmap: `/up/*`, `/tiles/*`). Если Dynmap и плагин
+доступны по одному адресу (туннель, обратный прокси), второй можно не задавать —
+тогда оба маршрута идут на `HYPEMAP_ORIGIN`.
 
 ## Что умеет
 
@@ -104,7 +109,7 @@ wrangler.pages.toml        альтернатива: Cloudflare Pages
 ## Деплой
 
 Пошаговая инструкция — **[docs/DEPLOY.md](docs/DEPLOY.md)**: установка Dynmap → сборка плагина
-(`mvn -B clean package`) → Cloudflare Tunnel → Pages → Access. Кратко:
+(`mvn -B clean package`) → Cloudflare Tunnel (или два порта) → Workers → Access. Кратко:
 
 ```bash
 # 1. плагин
@@ -121,6 +126,19 @@ npx wrangler deploy                      # читает wrangler.toml
 В CI/дашборде Cloudflare обязательно настройте **Build command**:
 `cd web && npm ci && npm run build` — без него `wrangler deploy` не найдёт `web/dist`
 (ошибка «Could not detect a directory containing static files»).
+
+Переменные воркера (`Settings → Variables and Secrets`):
+
+| Переменная | Обязательна | Что это |
+| --- | --- | --- |
+| `HYPEMAP_ORIGIN` | да | адрес плагина Hypemap: `https://mc.example.com` (туннель) или `http://185.12.34.56:8800` |
+| `HYPEMAP_DYNMAP_ORIGIN` | нет | адрес Dynmap, если он на другом хосте/порту: `http://185.12.34.56:8123` |
+| `TILES_CACHE_TTL` | нет | кеш тайлов в секундах, по умолчанию `604800` (7 дней) |
+
+> **Хостинг без SSH (панель, например hosting-minecraft.pro).** Туннель `cloudflared`
+> там не поставить — вместо него открывают **два TCP-порта в панели** и в переменные
+> пишут публичные адреса вида `http://<IP>:<порт>`. Подробнее — в
+> [docs/DEPLOY.md §5.4](docs/DEPLOY.md#54-хостинг-без-ssh-два-порта-вместо-туннеля).
 
 ## Документация
 
