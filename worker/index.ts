@@ -41,12 +41,16 @@ async function fetch(request: Request, env: Env, ctx: WorkerExecutionContext): P
 
   if (url.pathname.startsWith('/up/')) {
     const isConfiguration = url.pathname === '/up/configuration'
-    return proxy(context, url.pathname, isConfiguration ? { cacheTtl: 300 } : {})
+    return proxy(context, url.pathname, {
+      origin: 'dynmap',
+      ...(isConfiguration ? { cacheTtl: 300 } : {}),
+    })
   }
 
   if (url.pathname.startsWith('/tiles/')) {
     const parsed = Number(env.TILES_CACHE_TTL || 604800)
     return proxy(context, url.pathname, {
+      origin: 'dynmap',
       cacheTtl: Number.isFinite(parsed) && parsed > 0 ? parsed : 604800,
       fallback: 'pixel',
     })

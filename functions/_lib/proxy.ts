@@ -34,8 +34,15 @@ const TRANSPARENT_PIXEL = Uint8Array.from([
   0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
 ])
 
-export function originOf(env: Env): string {
-  return (env.HYPEMAP_ORIGIN || '').trim().replace(/\/+$/, '')
+export type OriginKind = 'api' | 'dynmap'
+
+/**
+ * Адрес origin'а. Для Dynmap можно указать отдельный (другой порт/хост) —
+ * это нужно, когда сервер стоит на хостинге без Cloudflare Tunnel.
+ */
+export function originOf(env: Env, kind: OriginKind = 'api'): string {
+  const raw = kind === 'dynmap' ? env.HYPEMAP_DYNMAP_ORIGIN || env.HYPEMAP_ORIGIN : env.HYPEMAP_ORIGIN
+  return (raw || '').trim().replace(/\/+$/, '')
 }
 
 export function jsonError(status: number, code: string, message: string, extraHeaders: Record<string, string> = {}) {
@@ -54,6 +61,8 @@ export interface ProxyOptions {
   cacheTtl?: number
   /** Что вернуть, если origin недоступен. */
   fallback?: 'pixel' | 'json'
+  /** Какой origin использовать: плагин (api) или Dynmap. */
+  origin?: OriginKind
 }
 
 /**
@@ -66,10 +75,17 @@ export async function proxy(
   options: ProxyOptions = {},
 ): Promise<Response> {
   const { request, env } = context
-  const origin = originOf(env)
+  const kind = options.origin ?? 'api'
+  const origin = originOf(env, kind)
 
   if (!origin) {
-    return jsonError(500, 'origin_not_configured', 'Не задан HYPEMAP_ORIGIN (переменная Pages)')
+    return jsonError(
+      500,
+      'origin_not_configured',
+      kind === 'dynmap'
+        ? 'Не задан HYPEMAP_ORIGIN (или HYPEMAP_DYNMAP_ORIGIN) — адрес сервера с Dynmap'
+        : 'Не задан HYPEMAP_ORIGIN — адрес плагина Hypemap',
+    )
   }
 
   const incoming = new URL(request.url)

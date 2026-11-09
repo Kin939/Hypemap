@@ -10,8 +10,14 @@ export interface AssetsFetcher {
 }
 
 export interface Env {
-  /** Публичный адрес туннеля с Minecraft-сервером (без слэша на конце). */
+  /** Публичный адрес плагина Hypemap (без слэша на конце), например https://mc.example.com */
   HYPEMAP_ORIGIN?: string
+  /**
+   * Публичный адрес Dynmap, если он отличается от HYPEMAP_ORIGIN
+   * (типичный случай: хостинг выдал два разных порта, туннеля нет).
+   * Может быть http:// — запрос делает edge, браузер видит только HTTPS сайта.
+   */
+  HYPEMAP_DYNMAP_ORIGIN?: string
   /** Статика web/dist — только в режиме Workers (`[assets]` в wrangler.toml). */
   ASSETS?: AssetsFetcher
   /** Service Token для Cloudflare Access (если туннель закрыт Access'ом). */
