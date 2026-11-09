@@ -23,7 +23,9 @@
 1. Скачайте Dynmap под **свою** версию сервера (таблица в [DYNMAP.md §1](DYNMAP.md)):
    для 1.21–1.21.4 — [`Dynmap-3.7-beta-8-spigot.jar`](https://cdn.modrinth.com/data/fRQREgAc/versions/ImNNT17B/Dynmap-3.7-beta-8-spigot.jar)
    (11,7 МБ), для 1.21.9–1.21.11 — сборки [jacob1/dynmap](https://github.com/jacob1/dynmap/releases),
-   для 1.21.5–1.21.8 официальной Spigot-сборки нет (подробности в DYNMAP.md).
+   для 1.21.5–1.21.8 Spigot-сборки Dynmap не существует — плагин отключается сам
+   (`Dynmap is disabled (unsupported platform)`), нужен переход на 1.21.4 или 1.21.9+
+   (подробности в DYNMAP.md).
    Положите jar в `plugins/`, перезапустите сервер: появится `plugins/dynmap/`.
 2. В `plugins/dynmap/configuration.txt`:
 
@@ -480,7 +482,8 @@ npx wrangler pages deploy web/dist --project-name hypemap
 | `Could not detect a directory containing static files` при `wrangler deploy` | не выполнен шаг сборки: нет `web/dist` | Build command = `cd web && npm ci && npm run build`, deploy = `npx wrangler deploy` |
 | `Configuration file for Pages projects does not support 'main'` | Pages-проект читает `wrangler.toml` от Workers | деплойте Pages с `--config wrangler.pages.toml` |
 | Сайт открылся, `/api/health` → 502 `upstream_unreachable` | не задан `HYPEMAP_ORIGIN` или туннель не поднят | Variables в дашборде + `systemctl status cloudflared` |
-| Сайт пишет «Не удалось загрузить конфигурацию Dynmap», `/api/health` → `"dynmap": false` | Dynmap не установлен или не загрузился | нет папки `plugins/dynmap/` → поставьте Dynmap 3.7-beta-8 ([DYNMAP.md §1](DYNMAP.md)), перезапустите сервер |
+| Сайт пишет «Не удалось загрузить конфигурацию Dynmap», `/api/health` → `"dynmap": false` | Dynmap не установлен или не загрузился | нет папки `plugins/dynmap/` → поставьте Dynmap под свою версию ([DYNMAP.md §1](DYNMAP.md)) |
+| В консоли `[Dynmap] bukkit version incompatible!` / `Dynmap is disabled (unsupported platform)` | версия сервера новее 1.21.4, Spigot-сборки Dynmap для неё нет | перейти на 1.21.4 (с бэкапом) или на 1.21.9+ со сборкой jacob1 — [DYNMAP.md §1](DYNMAP.md) |
 | Карта серая (пиксель вместо тайлов), `/api/health` работает | не задан/неверен `HYPEMAP_DYNMAP_ORIGIN` либо закрыт порт Dynmap | откройте адрес Dynmap из переменной (`…/up/configuration`); проверьте `webserver-port` и порт в панели; см. `/_diag` |
 | `/api/health` → 502, в сообщении «порт 25960» | адрес с нестандартным портом: Workers ходят только на 80/443 | HTTPS-адрес из rProxy панели или туннель (§5.4) |
 | `/_diag` → `"ok": false` | смотрите поле `hints` — там перечислены конкретные причины | исправьте то, что указано, и обновите страницу |
