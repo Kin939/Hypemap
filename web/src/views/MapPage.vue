@@ -170,7 +170,10 @@ function openSidebar(): void {
 
       <div v-else-if="!server.dynmapAvailable" class="map-notice">
         <TriangleAlert :size="15" />
-        <span>Dynmap недоступен: тайлы не загружены. Проверьте туннель и настройки Dynmap.</span>
+        <span>
+          Рендерер карты недоступен: тайлы не загружены. Проверьте Dynmap (или BlueMap для
+          Minecraft 26.x) и переменные воркера — подробности на <a href="/_diag">/_diag</a>.
+        </span>
       </div>
     </div>
   </div>

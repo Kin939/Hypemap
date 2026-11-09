@@ -42,7 +42,21 @@ async function probe(origin: string, path: string): Promise<Probe> {
   }
 }
 
-function hintsFor(api: Probe, dynmap: Probe): string[] {
+function bluemapHint(bluemap: Probe): string[] {
+  if (!bluemap.origin) return []
+  if (bluemap.status === null) {
+    return [
+      `BlueMap не отвечает (${bluemap.error}). Проверьте, что плагин BlueMap запущен ` +
+      'и веб-сервер слушает порт из HYPEMAP_BLUEMAP_ORIGIN.',
+    ]
+  }
+  if (!bluemap.ok) {
+    return [`BlueMap ответил HTTP ${bluemap.status} на /settings.json — проверьте адрес и порт.`]
+  }
+  return []
+}
+
+function hintsFor(api: Probe, dynmap: Probe, bluemap?: Probe): string[] {
   const hints: string[] = []
 
   // Про порт предупреждаем только когда проверка реально не прошла:
@@ -51,7 +65,8 @@ function hintsFor(api: Probe, dynmap: Probe): string[] {
     const warning = originWarning(api.origin)
     if (warning) hints.push(warning)
   }
-  if (!dynmap.ok) {
+  const bluemapWorks = bluemap?.ok === true
+  if (!dynmap.ok && !bluemapWorks) {
     const warning = originWarning(dynmap.origin)
     if (warning) hints.push(warning)
   }
@@ -76,7 +91,7 @@ function hintsFor(api: Probe, dynmap: Probe): string[] {
     hints.push(`Плагин ответил HTTP ${api.status} на /api/health — смотрите консоль сервера.`)
   }
 
-  if (!dynmap.ok) {
+  if (!dynmap.ok && !bluemapWorks) {
     if (!dynmap.origin) {
       hints.push('Dynmap: не задан ни HYPEMAP_DYNMAP_ORIGIN, ни HYPEMAP_ORIGIN — тайлы не загрузятся.')
     } else if (dynmap.status === null) {
@@ -93,27 +108,41 @@ function hintsFor(api: Probe, dynmap: Probe): string[] {
     }
   }
 
-  if (hints.length === 0) {
-    hints.push('Оба адреса отвечают — прокси настроен верно.')
+  // BlueMap — альтернативный рендерер: если он настроен, Dynmap не обязателен.
+  const rendererHints = bluemap ? bluemapHint(bluemap) : []
+  hints.push(...rendererHints)
+  if (bluemap?.ok) {
+    hints.push('BlueMap отвечает — тайлы и игроки будут браться из него.')
   }
-  return hints
+
+  const rendererOk = api.ok && (dynmap.ok || bluemapWorks)
+  if (rendererOk && hints.every((hint) => !/не отвечает|HTTP /.test(hint))) {
+    hints.push('Прокси настроен верно: плагин и рендерер карты отвечают.')
+  } else if (hints.length === 0) {
+    hints.push('Адреса не заданы — см. docs/DEPLOY.md §5.')
+  }
+  return Array.from(new Set(hints))
 }
 
 export async function diag(env: Env): Promise<Response> {
   const apiOrigin = originOf(env, 'api')
   const dynmapOrigin = originOf(env, 'dynmap')
-  const [api, dynmap] = await Promise.all([
+  const blueMapOrigin = originOf(env, 'bluemap')
+  const [api, dynmap, bluemap] = await Promise.all([
     probe(apiOrigin, '/api/health'),
-    probe(dynmapOrigin, '/up/configuration'),
+    dynmapOrigin ? probe(dynmapOrigin, '/up/configuration') : Promise.resolve(undefined),
+    blueMapOrigin ? probe(blueMapOrigin, '/settings.json') : Promise.resolve(undefined),
   ])
 
+  const renderer = bluemap?.ok ? 'bluemap' : dynmap?.ok ? 'dynmap' : undefined
   const payload = {
-    ok: api.ok && dynmap.ok,
-    origins: { api, dynmap },
+    ok: api.ok && Boolean(dynmap?.ok || bluemap?.ok),
+    renderer,
+    origins: { api, dynmap, bluemap },
     dynmap_origin_is_fallback: !env.HYPEMAP_DYNMAP_ORIGIN,
     tiles_cache_ttl: Number(env.TILES_CACHE_TTL || 604800),
     access_service_token: Boolean(env.ACCESS_CLIENT_ID && env.ACCESS_CLIENT_SECRET),
-    hints: hintsFor(api, dynmap),
+    hints: hintsFor(api, dynmap as Probe, bluemap),
   }
 
   return new Response(JSON.stringify(payload, null, 2), {

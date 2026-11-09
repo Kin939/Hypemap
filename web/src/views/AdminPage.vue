@@ -303,7 +303,8 @@ async function changePassword(): Promise<void> {
             <Users :size="13" />
             <span>
               Онлайн: {{ server.onlineCount }} / {{ server.maxPlayers || '—' }} ·
-              Dynmap: {{ server.dynmapAvailable ? 'подключён' : 'недоступен' }}
+              {{ server.renderer === 'bluemap' ? 'BlueMap' : 'Dynmap' }}:
+              {{ server.dynmapAvailable ? 'подключён' : 'недоступен' }}
             </span>
           </div>
         </section>

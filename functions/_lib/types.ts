@@ -18,6 +18,11 @@ export interface Env {
    * Может быть http:// — запрос делает edge, браузер видит только HTTPS сайта.
    */
   HYPEMAP_DYNMAP_ORIGIN?: string
+  /**
+   * Публичный адрес BlueMap (если карта рендерится им, а не Dynmap).
+   * Нужен для Minecraft 26.x: Dynmap не поддерживает версии новее 1.21.4.
+   */
+  HYPEMAP_BLUEMAP_ORIGIN?: string
   /** Статика web/dist — только в режиме Workers (`[assets]` в wrangler.toml). */
   ASSETS?: AssetsFetcher
   /** Service Token для Cloudflare Access (если туннель закрыт Access'ом). */

@@ -18,10 +18,12 @@ Hypemap (плагин, :8800)      Dynmap (:8123)
 SQLite + REST + Marker API   тайлы, /up/*, аватарки
 ```
 
-Прокси в Workers знает **два адреса**: `HYPEMAP_ORIGIN` (плагин: `/api/*`) и
-`HYPEMAP_DYNMAP_ORIGIN` (Dynmap: `/up/*`, `/tiles/*`). Если Dynmap и плагин
-доступны по одному адресу (туннель, обратный прокси), второй можно не задавать —
-тогда оба маршрута идут на `HYPEMAP_ORIGIN`.
+Прокси в Workers знает **два адреса рендерера**: `HYPEMAP_ORIGIN` (плагин: `/api/*`) и
+адрес карты — `HYPEMAP_DYNMAP_ORIGIN` (`/up/*`, `/tiles/*`) или
+`HYPEMAP_BLUEMAP_ORIGIN` (`/bluemap/*`). Если Dynmap и плагин доступны по одному
+адресу (туннель, обратный прокси), второй можно не задавать — тогда оба маршрута идут
+на `HYPEMAP_ORIGIN`. На Minecraft 26.x, где Dynmap не работает, карту рендерит
+[BlueMap](docs/BLUEMAP.md) — сайт определяет рендерер сам.
 
 ## Что умеет
 
@@ -133,6 +135,7 @@ npx wrangler deploy                      # читает wrangler.toml
 | --- | --- | --- |
 | `HYPEMAP_ORIGIN` | да | адрес плагина Hypemap: `https://mc.example.com` (туннель или rProxy панели) |
 | `HYPEMAP_DYNMAP_ORIGIN` | нет | адрес Dynmap, если он на другом хосте: `https://map.example.com` (только 80/443) |
+| `HYPEMAP_BLUEMAP_ORIGIN` | нет | адрес BlueMap, если карту рендерит он (Minecraft 26.x, где Dynmap не работает) |
 | `TILES_CACHE_TTL` | нет | кеш тайлов в секундах, по умолчанию `604800` (7 дней) |
 
 > **Хостинг без SSH (панель, например hosting-minecraft.pro).** Туннель `cloudflared`
@@ -152,6 +155,7 @@ npx wrangler deploy                      # читает wrangler.toml
 | [docs/API.md](docs/API.md) | все эндпоинты с примерами `curl` |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | пошаговый деплой и диагностика |
 | [docs/DYNMAP.md](docs/DYNMAP.md) | настройка Dynmap под top-down тайлы и Marker API |
+| [docs/BLUEMAP.md](docs/BLUEMAP.md) | BlueMap вместо Dynmap: установка, переменные, ограничения |
 
 ## Ограничения и что дальше
 

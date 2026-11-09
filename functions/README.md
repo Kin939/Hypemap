@@ -12,6 +12,7 @@
 | `api/[[path]].ts` | `/api/*` | прокси на `HYPEMAP_ORIGIN/api/*`, `no-store` |
 | `up/[[path]].ts` | `/up/*` | прокси на Dynmap; `/up/configuration` кешируется 5 минут |
 | `tiles/[[path]].ts` | `/tiles/*` | прокси на Dynmap; кеш 7 дней (Cache API), при сбое — прозрачный пиксель |
+| `bluemap/[[path]].ts` | `/bluemap/*` | прокси на `HYPEMAP_BLUEMAP_ORIGIN`; тайлы 7 дней, `settings.json` 5 минут, `/live/*` без кеша |
 | `_middleware.ts` | всё | CSP, заголовки безопасности, а также `/_diag` |
 | `_lib/diag.ts` | `/_diag` | самодиагностика: запрос к обоим origin'ам + подсказки (в воркере вызывается из `worker/index.ts`) |
 | `_lib/proxy.ts` | — | общая логика: заголовки, Service Token Cloudflare Access, кеш, ошибки |
@@ -23,6 +24,7 @@
 | --- | --- | --- |
 | `HYPEMAP_ORIGIN` | var | `https://mc.example.com` — адрес плагина (туннель или rProxy панели) |
 | `HYPEMAP_DYNMAP_ORIGIN` | var | адрес Dynmap, если он на другом хосте/порту; иначе берётся `HYPEMAP_ORIGIN` |
+| `HYPEMAP_BLUEMAP_ORIGIN` | var | адрес BlueMap, если карту рендерит он (Minecraft 26.x); Dynmap тогда не нужен |
 | `TILES_CACHE_TTL` | var | кеш тайлов в секундах, по умолчанию `604800` |
 | `ACCESS_CLIENT_ID` | secret | Service Token Cloudflare Access (если туннель закрыт) |
 | `ACCESS_CLIENT_SECRET` | secret | Service Token secret |

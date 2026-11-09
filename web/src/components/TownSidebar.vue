@@ -124,7 +124,9 @@ function clearSearch(): void {
     <div class="sidebar__foot">
       <span>{{ towns.totalMembers }} игроков · {{ formatArea(towns.totalArea) }}</span>
       <span v-if="towns.lastLoadedAt" class="mono">{{ relativeTime(towns.lastLoadedAt) }}</span>
-      <span v-else-if="server.dynmapAvailable" class="mono">dynmap ok</span>
+      <span v-else-if="server.dynmapAvailable" class="mono">
+        {{ server.renderer === 'bluemap' ? 'bluemap ok' : 'dynmap ok' }}
+      </span>
     </div>
   </aside>
 </template>

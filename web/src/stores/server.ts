@@ -2,8 +2,10 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/api/endpoints'
 import { fetchConfiguration } from '@/api/dynmap'
+import { fetchBlueMapMapSettings, fetchBlueMapSettings, toGrid } from '@/api/bluemap'
 import type { DynmapConfiguration, MapDefinition, MetaResponse } from '@/api/types'
 import { buildMapDefinition } from '@/map/dynmapMath'
+import { blueMapMapDefinition } from '@/map/bluemapMath'
 
 export const useServerStore = defineStore('server', () => {
   const meta = ref<MetaResponse | null>(null)
@@ -13,6 +15,8 @@ export const useServerStore = defineStore('server', () => {
   const loading = ref(true)
   const error = ref('')
   const dynmapAvailable = ref(false)
+  /** Чем рендерится карта: Dynmap или BlueMap (Minecraft 26.x — только BlueMap). */
+  const renderer = ref<'dynmap' | 'bluemap' | null>(null)
 
   const currentMap = computed<MapDefinition | null>(() => maps.value[currentIndex.value] ?? null)
   const worlds = computed(() => {
@@ -53,6 +57,7 @@ export const useServerStore = defineStore('server', () => {
       }
       maps.value = list
       dynmapAvailable.value = list.length > 0
+      if (list.length > 0) renderer.value = 'dynmap'
 
       const wantedWorld = configuration.defaultworld
       const wantedMap = configuration.defaultmap
@@ -65,9 +70,41 @@ export const useServerStore = defineStore('server', () => {
     }
   }
 
+  /**
+   * BlueMap как альтернативный рендерер: Dynmap не поддерживает Minecraft новее
+   * 1.21.4, поэтому на 26.x карту отдаёт BlueMap. Формат другой (lod-тайлы),
+   * но для остального приложения это просто ещё один MapDefinition.
+   */
+  async function loadBlueMap(): Promise<boolean> {
+    try {
+      const settings = await fetchBlueMapSettings()
+      const entries = settings.maps ?? []
+      if (entries.length === 0) return false
+
+      const defs: MapDefinition[] = []
+      for (const entry of entries) {
+        const mapSettings = await fetchBlueMapMapSettings(entry.id)
+        defs.push(blueMapMapDefinition(entry, toGrid(mapSettings), mapSettings))
+      }
+
+      maps.value = defs
+      currentIndex.value = 0
+      renderer.value = 'bluemap'
+      dynmapAvailable.value = true
+      error.value = ''
+      return true
+    } catch (err) {
+      console.warn('[hypemap] bluemap configuration error', err)
+      return false
+    }
+  }
+
   async function load(): Promise<void> {
     loading.value = true
-    await Promise.allSettled([loadMeta(), loadDynmap()])
+    await Promise.allSettled([loadMeta()])
+    await loadDynmap()
+    if (maps.value.length === 0) await loadBlueMap()
+    if (maps.value.length > 0 && !renderer.value) renderer.value = 'dynmap'
     loading.value = false
   }
 
@@ -99,9 +136,11 @@ export const useServerStore = defineStore('server', () => {
     onlineCount,
     maxPlayers,
     flags,
+    renderer,
     load,
     loadMeta,
     loadDynmap,
+    loadBlueMap,
     selectMap,
     selectMapByName,
     refreshMeta,

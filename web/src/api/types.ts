@@ -217,6 +217,11 @@ export interface DynmapWorldUpdate {
 }
 
 /** Описание карты, собранное из /up/configuration и готовое для MapEngine. */
+export interface BlueMapRef {
+  id: string
+  grid: { tileSize: number; lodFactor: number; lodCount: number }
+}
+
 export interface MapDefinition {
   world: string
   worldTitle: string
@@ -244,4 +249,8 @@ export interface MapDefinition {
     maxZoom: number
     mapZoomIn: number
   }
+  /** Чем рендерится карта: Dynmap (тайлы в его схеме) или BlueMap (lod-тайлы). */
+  renderer?: 'dynmap' | 'bluemap'
+  /** Параметры BlueMap-сетки, если renderer === 'bluemap'. */
+  blueMap?: BlueMapRef
 }

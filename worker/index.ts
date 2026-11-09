@@ -15,6 +15,7 @@ import { withSecurityHeaders } from '../functions/_lib/security'
  *   /api/*   → HYPEMAP_ORIGIN/api/*        (плагин, no-store)
  *   /up/*    → HYPEMAP_ORIGIN/up/*         (Dynmap; configuration кеш 5 минут)
  *   /tiles/* → HYPEMAP_ORIGIN/tiles/*      (тайлы, кеш 7 дней, при сбое — пиксель)
+ *   /bluemap/* → HYPEMAP_BLUEMAP_ORIGIN/*  (BlueMap: settings.json, тайлы lowres, /live/*)
  *   всё остальное → статика из web/dist (SPA-фолбэк для /admin, /towns…)
  */
 interface WorkerExecutionContext {
@@ -62,6 +63,11 @@ async function fetch(request: Request, env: Env, ctx: WorkerExecutionContext): P
     })
   }
 
+  if (url.pathname === '/bluemap' || url.pathname.startsWith('/bluemap/')) {
+    const rest = url.pathname.replace(/^\/bluemap/, '') || '/'
+    return proxy(context, rest, blueMapOptions(rest, env))
+  }
+
   if (!env.ASSETS) {
     return jsonError(
       500,
@@ -79,6 +85,21 @@ async function fetch(request: Request, env: Env, ctx: WorkerExecutionContext): P
     extra.set('Cache-Control', 'no-cache')
   }
   return withSecurityHeaders(response, extra)
+}
+
+/**
+ * BlueMap отдаёт: `/settings.json`, `/maps/<id>/settings.json`, `/maps/<id>/live/*`
+ * и PNG-тайлы `/maps/<id>/tiles/<lod>/...`. Кешируем только неизменяемое.
+ */
+function blueMapOptions(path: string, env: Env) {
+  const ttl = Number(env.TILES_CACHE_TTL || 604800)
+  if (path.includes('/tiles/')) {
+    return { origin: 'bluemap' as const, cacheTtl: Number.isFinite(ttl) && ttl > 0 ? ttl : 604800 }
+  }
+  if (path.endsWith('settings.json')) {
+    return { origin: 'bluemap' as const, cacheTtl: 300 }
+  }
+  return { origin: 'bluemap' as const }
 }
 
 export default { fetch }
